@@ -2,189 +2,312 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Gestión Portátil</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preingresos | Gestión de CSV en Google Drive</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 20px; }
-        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; box-shadow: 2px 2px 12px #aaa; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .summary { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 4px; }
+        :root {
+            --bg-body: #070b19;
+            --bg-card: rgba(15, 23, 42, 0.92);
+            --fuchsia-accent: #ff007f;
+            --fuchsia-bright: #ffb3de;
+            --fuchsia-border: #e01e84;
+            --purple-accent: #c084fc;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --radius: 12px;
+            --shadow-fuchsia: 0 0 20px rgba(255, 0, 127, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2.5rem 1rem;
+        }
+
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--fuchsia-border);
+            padding: 2rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.2);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        header .subtitle {
+            font-size: 1rem;
+            color: var(--fuchsia-bright);
+            font-weight: 600;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 0, 127, 0.3);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--purple-accent);
+        }
+
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid var(--fuchsia-border);
+            background: linear-gradient(135deg, rgba(50, 10, 42, 0.95), rgba(20, 10, 30, 0.95));
+            color: #ffffff;
+            transition: all 0.25s ease;
+            box-shadow: var(--shadow-fuchsia);
+            margin-top: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(70, 15, 60, 0.98), rgba(30, 10, 45, 0.98));
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: var(--fuchsia-bright);
+            font-weight: 700;
+        }
+
+        td {
+            color: var(--text-muted);
+        }
+
+        #status-msg {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--fuchsia-bright);
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Gestión de Pronóstico y Gastos</h1>
-        
-        <div class="form-group">
-            <button id="btnIniciarSesion" onclick="loginWithGoogle()">Iniciar Sesión con Google</button>
+
+    <div class="container">
+        <header>
+            <h1>Gestión de Preingresos</h1>
+            <div class="subtitle">Sincronización con Google Drive y CSV</div>
+        </header>
+
+        <!-- Panel de Autenticación -->
+        <div class="card" id="auth-section">
+            <h2>1. Conexión con Google</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem;">
+                Inicia sesión con tu cuenta autorizada para acceder al archivo CSV en tu Google Drive.
+            </p>
+            <button class="btn" id="authorize_button" onclick="handleAuthClick()">Conectar con Google Drive</button>
         </div>
 
-        <div class="form-group">
-            <label for="csvFile">Cargar Archivo CSV Existente:</label>
-            <input type="file" id="csvFile" accept=".csv">
-            <span id="archivoInfo">Ningún archivo cargado.</span>
+        <!-- Panel de Datos / CSV -->
+        <div class="card hidden" id="data-section">
+            <h2>2. Contenido del Archivo CSV</h2>
+            <div id="status-msg">Buscando archivo en Google Drive...</div>
+            <div style="overflow-x: auto;">
+                <table id="csv-table" class="hidden">
+                    <thead><tr id="table-head"></tr></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
         </div>
-
-        <hr>
-
-        <h2>Configuración</h2>
-        <div class="form-group">
-            <label for="separador">Símbolo Separador:</label>
-            <input type="text" id="separador" value=";" style="width: 50px;">
-        </div>
-        <div class="form-group">
-            <label for="ingreso">Ingreso Mensual Supuesto ($):</label>
-            <input type="number" id="ingreso" value="100.00" step="0.01">
-        </div>
-
-        <hr>
-
-        <h2>Registrar Producto</h2>
-        <form id="formRegistro">
-            <div class="form-group"><label>Mes/Año:</label><input type="text" id="mesAnio" placeholder="Ej. 10/2026" required></div>
-            <div class="form-group"><label>Producto:</label><input type="text" id="producto" required></div>
-            <div class="form-group"><label>Inversión/Costo ($):</label><input type="number" id="inversion" step="0.01" required></div>
-            <div class="form-group"><label>Categoría:</label><input type="text" id="categoria" required></div>
-            <div class="form-group"><label>Tienda:</label><input type="text" id="tienda" required></div>
-            <button type="submit">Agregar a la Lista</button>
-        </form>
-
-        <hr>
-
-        <h2>Tabla Acumulada</h2>
-        <table id="tablaDatos">
-            <thead>
-                <tr>
-                    <th>MES/AÑO</th>
-                    <th>PRODUCTO</th>
-                    <th>INVERSIÓN</th>
-                    <th>CATEGORÍA</th>
-                    <th>TIENDA</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-
-        <div class="summary" id="resumen"></div>
-
-        <hr>
-        <button id="btnGuardar" style="background-color: #28a745;">Descargar CSV Actualizado</button>
     </div>
 
     <script>
-        let registros = [];
-        let accessToken;
-        const csvFile = document.getElementById('csvFile');
-        const archivoInfo = document.getElementById('archivoInfo');
-        const formRegistro = document.getElementById('formRegistro');
-        const btnGuardar = document.getElementById('btnGuardar');
-        const tablaBody = document.querySelector('#tablaDatos tbody');
-        const resumen = document.getElementById('resumen');
+        // ----------------------------------------------------
+        // CONFIGURACIÓN DE TU CLIENTE DE GOOGLE OAUTH 2.0
+        // ----------------------------------------------------
+        // AQUÍ DEBES COLOCAR TU CLIENT_ID QUE OBTUVISTE EN LA GOOGLE CLOUD CONSOLE:
+        const CLIENT_ID = '889002724696-q60utmp5fnf2gedffu12vj9q26p8c9c8.apps.googleusercontent.com';
+        
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-        window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: '889002724696-q60utmp5fnf2gedffu12vj9q26p8c9c8.apps.googleusercontent.com',
-                callback: handleCredentialResponse
-            });
-            renderTable();
-        };
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
 
-        function handleCredentialResponse(response) {
-            accessToken = response.credential;
-            alert('¡Autenticación exitosa!');
-        }
-
-        function loginWithGoogle() {
-            google.accounts.id.prompt();
-        }
-
-        csvFile.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            archivoInfo.textContent = 'Archivo: ' + file.name;
-            const text = await file.text();
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            const sep = document.getElementById('separador').value;
-            registros = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(sep);
-                if (cols.length === 5) {
-                    registros.push({
-                        mesAnio: cols[0],
-                        producto: cols[1],
-                        inversion: parseFloat(cols[2].replace(',', '.')),
-                        categoria: cols[3],
-                        tienda: cols[4]
-                    });
-                }
+        function checkLoaded() {
+            if (gapiInited && gisInited) {
+                document.getElementById('authorize_button').style.visibility = 'visible';
             }
-            renderTable();
-        });
+        }
 
-        formRegistro.addEventListener('submit', (e) => {
-            e.preventDefault();
-            registros.push({
-                mesAnio: document.getElementById('mesAnio').value,
-                producto: document.getElementById('producto').value,
-                inversion: parseFloat(document.getElementById('inversion').value),
-                categoria: document.getElementById('categoria').value,
-                tienda: document.getElementById('tienda').value
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
             });
-            formRegistro.reset();
-            renderTable();
-            alert('Producto agregado a memoria.');
-        });
+            gapiInited = true;
+            checkLoaded();
+        }
 
-        btnGuardar.addEventListener('click', () => {
-            const sep = document.getElementById('separador').value;
-            let csvContent = 'MES/AÑO' + sep + 'PRODUCTO' + sep + 'INVERSIÓN' + sep + 'CATEGORÍA' + sep + 'TIENDA\n';
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // Definido al momento del click
+            });
+            gisInited = true;
+            checkLoaded();
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('data-section').classList.remove('hidden');
+                await loadCsvFromDrive();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        async function loadCsvFromDrive() {
+            try {
+                document.getElementById('status-msg').innerText = 'Buscando "ingresos_pronostico.csv"...';
+                
+                // Buscar el archivo CSV en el Drive del usuario
+                const response = await gapi.client.drive.files.list({
+                    q: "name = 'ingresos_pronostico.csv' and trashed = false",
+                    pageSize: 1,
+                    fields: 'files(id, name)',
+                });
+
+                const files = response.result.files;
+                if (files && files.length > 0) {
+                    const fileId = files[0].id;
+                    document.getElementById('status-msg').innerText = 'Descargando datos...';
+                    
+                    // Leer el contenido del archivo
+                    const fileResponse = await gapi.client.drive.files.get({
+                        fileId: fileId,
+                        alt: 'media'
+                    });
+
+                    parseAndDisplayCsv(fileResponse.body);
+                } else {
+                    document.getElementById('status-msg').innerText = 'No se encontró el archivo "ingresos_pronostico.csv" en tu Google Drive.';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status-msg').innerText = 'Error al conectar con Google Drive: ' + (err.message || err);
+            }
+        }
+
+        function parseAndDisplayCsv(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length === 0) {
+                document.getElementById('status-msg').innerText = 'El archivo CSV está vacío.';
+                return;
+            }
+
+            const thead = document.getElementById('table-head');
+            const tbody = document.getElementById('table-body');
             
-            registros.forEach(r => {
-                csvContent += `${r.mesAnio}${sep}${r.producto}${sep}${r.inversion.toFixed(2)}${sep}${r.categoria}${sep}${r.tienda}\n`;
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            // Procesar cabecera (separador por punto y coma o coma según formato detectado)
+            const separator = lines[0].includes(';') ? ';' : ',';
+            const headers = lines[0].split(separator);
+            
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.innerText = headerText.trim();
+                thead.appendChild(th);
             });
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "ingresos_pronostico.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            alert('¡Descarga iniciada!');
-        });
+            // Procesar filas de datos
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const rowData = lines[i].split(separator);
+                const tr = document.createElement('tr');
+                
+                rowData.forEach(cellText => {
+                    const td = document.createElement('td');
+                    td.innerText = cellText.trim();
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            }
 
-        function renderTable() {
-            tablaBody.innerHTML = '';
-            let totalGastos = 0;
-            registros.forEach(r => {
-                const row = `<tr>
-                    <td>${r.mesAnio}</td>
-                    <td>${r.producto}</td>
-                    <td>${r.inversion.toFixed(2)}</td>
-                    <td>${r.categoria}</td>
-                    <td>${r.tienda}</td>
-                </tr>`;
-                tablaBody.innerHTML += row;
-                totalGastos += r.inversion;
-            });
-
-            const ingreso = parseFloat(document.getElementById('ingreso').value);
-            const balance = ingreso - totalGastos;
-            resumen.innerHTML = `
-                <p>Ingreso Supuesto Mensual: $${ingreso.toFixed(2)}</p>
-                <p>Total Gastos/Inversión:   $${totalGastos.toFixed(2)}</p>
-                <p><strong>Balance Restante:         $${balance.toFixed(2)}</strong></p>
-            `;
+            document.getElementById('status-msg').classList.add('hidden');
+            document.getElementById('csv-table').classList.remove('hidden');
         }
     </script>
+
+    <!-- Cargar librerías de Google de forma asíncrona -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
