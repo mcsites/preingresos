@@ -159,7 +159,6 @@
             display: none;
         }
 
-        /* Panel Financiero estilo Pascal */
         .financial-panel {
             background: rgba(15, 23, 42, 0.95);
             border: 1px solid var(--purple-accent);
@@ -291,8 +290,8 @@
     </div>
 
     <script>
-        // REEMPLAZA CON TU CLIENT ID DE GOOGLE CLOUD CONSOLE
-        const CLIENT_ID = '889002724696-q60utmp5fnf2gedffu12vj9q26p8c9c8.apps.googleusercontent.com';
+        // PEGA AQUÍ TU CLIENT ID COPIADO DE GOOGLE CLOUD
+        const CLIENT_ID = '889002724696-q6outmp5fnf2gedffu12vj9q26p8c9c8.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
         let tokenClient;
@@ -376,12 +375,14 @@
 
         async function createNewSpreadsheet() {
             try {
+                document.getElementById('status-msg').innerText = 'Creando "ingresos_pronostico" en Google Drive...';
+                
                 const response = await gapi.client.sheets.spreadsheets.create({
                     properties: { title: 'ingresos_pronostico' }
                 });
+                
                 currentSpreadsheetId = response.result.spreadsheetId;
 
-                // Escribir cabeceras iniciales
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: currentSpreadsheetId,
                     range: 'A1:E1',
@@ -392,8 +393,16 @@
                 document.getElementById('status-msg').innerText = '¡Hoja creada exitosamente en tu Drive!';
                 await fetchAndDisplaySheetData();
             } catch (err) {
-                console.error(err);
-                document.getElementById('status-msg').innerText = 'Error al crear la hoja de cálculo.';
+                console.error('Error al crear la hoja:', err);
+                let mensajeError = 'Error al crear la hoja de cálculo.';
+                
+                if (err.result && err.result.error) {
+                    mensajeError = `Error (${err.result.error.code}): ${err.result.error.message}`;
+                } else if (err.message) {
+                    mensajeError = err.message;
+                }
+                
+                document.getElementById('status-msg').innerText = mensajeError;
             }
         }
 
@@ -416,14 +425,12 @@
                     return;
                 }
 
-                // Cabeceras
                 rows[0].forEach(headerText => {
                     const th = document.createElement('th');
                     th.innerText = headerText;
                     thead.appendChild(th);
                 });
 
-                // Datos y cálculo acumulado
                 currentRowsData = rows.slice(1);
                 currentRowsData.forEach(row => {
                     const tr = document.createElement('tr');
@@ -448,7 +455,6 @@
             const ingresoMensual = parseFloat(document.getElementById('ingreso-mensual').value) || 0;
             let totalGastos = 0;
 
-            // Columna 2 (índice 2) corresponde a "Inversión"
             currentRowsData.forEach(row => {
                 const val = parseFloat(String(row[2] || '').replace(',', '.')) || 0;
                 totalGastos += val;
